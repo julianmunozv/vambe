@@ -1,0 +1,4 @@
+# SQLite database (exceeds GitHub's 100 MB file size limit)
+*.db
+*.db-wal
+*.db-shm
