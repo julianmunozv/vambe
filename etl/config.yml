@@ -1,0 +1,136 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# NIVEL 2 · Configuración declarada
+#
+# Acá va SOLO lo que requiere criterio humano, con la razón escrita al lado.
+# Lo que se puede derivar de los datos NO va acá: lo derivan las reglas A/B/C
+# en profile.py. Si algo de este archivo resulta estar mal, se discute y se
+# cambia acá — no se busca enterrado en el código.
+# ─────────────────────────────────────────────────────────────────────────────
+
+perfilado:
+  # REGLA A · Valor dominante. Si un valor concentra más de este umbral, la
+  # columna es relleno. Medido: 8 campos de registros_cambios al 100,00%
+  # (literalmente el string "(valor_nuevo)") vs etapa_id al 19,4%.
+  umbral_valor_dominante: 0.99
+
+  # REGLA B · Poder discriminante (eta²). Si una columna numérica no explica
+  # varianza entre los grupos de su agrupador natural, no informa nada.
+  # Medido: duracion_ms = 0,000028 (ruido) · exito = 0,059 (señal débil real)
+  # · presupuesto por tipo_vehiculo = 0,42 (señal fuerte).
+  # El umbral queda con 350x de margen bajo la señal más débil.
+  umbral_eta2: 0.01
+
+  # REGLA C · Frecuencia de clave JSON. Una clave presente en menos de este
+  # porcentaje de documentos es ruido inyectado.
+  # Medido: ~900 claves x_meta_* con máx 0,36% vs señal mínima 15,6%. 43x.
+  umbral_frecuencia_clave: 0.01
+
+  # Columnas numéricas a evaluar con la Regla B, con su agrupador natural.
+  # Es una lista de PARES a evaluar, no una lista de columnas a descartar:
+  # el veredicto lo da el eta² medido, no este archivo.
+  discriminancia:
+    - tabla: llamadas_herramienta
+      columna: duracion_ms
+      agrupador: nombre_herramienta
+    - tabla: llamadas_herramienta
+      columna: exito
+      agrupador: nombre_herramienta
+
+semantica:
+  # Significado de negocio que NO se puede derivar de los datos. El DDL no lo
+  # dice y ninguna regla estadística lo puede inferir: se declara acá, con su
+  # razón, para que sea discutible en vez de estar enterrado en una query.
+
+  # Hay DOS etapas terminales (es_terminal=1) y el esquema no distingue cuál es
+  # éxito. Se identifica por nombre, no por orden: asumir "la terminal de menor
+  # orden gana" rompería con un embudo diseñado al revés.
+  etapa_exito: Ganado
+
+  # Qué herramienta del asistente significa "escalar a un humano".
+  herramienta_escalamiento: transferir_a_humano
+
+  # Quién es humano y quién es IA en remitente_tipo.
+  remitente_humano: vendedor
+  remitente_asistente: asistente
+
+atribucion:
+  # DECISIÓN DE NEGOCIO: first-touch.
+  # 1.761 contactos (5,1%) tienen más de un payload y el 98,2% se contradicen
+  # entre sí — son leads que tocaron varios canales. Quedarse con el primer
+  # mensaje mide ADQUISICIÓN (qué trajo al lead); last-touch mediría CIERRE.
+  # Los toques completos quedan en analytics.fct_touchpoints, así que la
+  # decisión es reversible sin perder información.
+  modelo: first_touch
+
+  # Orden de la cascada. La primera rama que tenga contenido gana.
+  # Ojo: 'referral' existe en el 100% de los payloads pero con valor null
+  # cuando el lead no vino de un anuncio → hay que evaluar CONTENIDO, no
+  # presencia de la clave.
+  cascada:
+    - fuente: mensajes.payload
+      clave: referral.source_id
+      canal: ad
+    - fuente: mensajes.payload
+      clave: form.form_name
+      canal: form
+    - fuente: mensajes.payload
+      clave: entry_point
+      canal: organico
+    - fuente: mensajes.payload
+      clave: web_context.referrer
+      canal: web
+    # Fallback al CRM. Recupera los 8.132 leads (23,5%) que no traen señal
+    # entrante en el payload: son OUTBOUND (la concesionaria los contactó).
+    # Verificado: payload.source del CRM coincide 100% con el canal derivado
+    # y no se contradice en ninguno de los 34.600 contactos.
+    - fuente: integracion_crm.payload
+      clave: source
+      canal: crm
+
+auditorias_de_coherencia:
+  # Pares que DEBERÍAN estar relacionados. Si el eta²/asociación da ~0, el
+  # campo es ruido con apariencia de métrica. profile.py los reporta.
+  - descripcion: "score vs calificado en calificar_lead"
+    esperado: correlacionados
+    medido: "independientes — score 92 con calificado=false. RUIDO."
+  - descripcion: "lifecyclestage del CRM vs etapa real del embudo"
+    esperado: correlacionados
+    medido: "20% uniforme en los 5 valores sin importar la etapa. RUIDO."
+  - descripcion: "estado_sync vs conversión"
+    esperado: sin_relacion_conocida
+    medido: "60/20/20 idéntico entre ganados y no ganados. RUIDO."
+
+descartes_justificados:
+  # Se descartan del modelo, pero NO de raw: la copia a raw es fiel para que
+  # el perfilado tenga qué detectar y el reporte sea demostrable.
+  - campo: llamadas_herramienta.duracion_ms
+    razon: "eta² = 0,000028 contra nombre_herramienta. Uniforme aleatoria."
+  - campo: llamadas_herramienta.resultado.calificado
+    razon: "Sin correlación con su propio score."
+  - campo: mensajes.contenido
+    razon: >
+      13.161 frases enlatadas repetidas ~21.500 veces. Frases de significado
+      opuesto convierten igual (13,3% "Déjame pensarlo" vs 13,7% "Perfecto,
+      avancemos"): el efecto aparente es largo de conversación, ya capturado
+      por n_mensajes.
+  - campo: mensajes.es_automatico
+    razon: "Redundante: sus 110.959 coinciden exacto con remitente_tipo='asistente'."
+  - campo: integracion_crm.estado_sync
+    razon: "60/20/20 idéntico entre ganados y no ganados."
+  - campo: integracion_crm.payload.lifecyclestage
+    razon: "20% uniforme sin relación con la etapa real."
+
+contratos:
+  # Cada 1:1 del que depende el modelo. Son propiedades de ESTOS datos, no del
+  # esquema — el DDL no las impide. Si otra base los viola, el join duplicaría
+  # filas en silencio (el error de contar payloads infla orgánico un 20,3%).
+  unicidad:
+    - {tabla: citas,                 por: [contacto_id]}
+    - {tabla: campana_contactos,     por: [contacto_id]}
+    - {tabla: llamadas_herramienta,  por: [contacto_id, nombre_herramienta]}
+  conteo_exacto:
+    - {tabla: metadata_contacto, por: contacto_id, filas: 6}   # EAV denso
+  constante_por_grupo:
+    - {tabla: integracion_crm, campo: "payload->>'source'", por: contacto_id}
+  cobertura_minima:
+    - {tabla: fct_leads, columna: canal, minimo: 0.95}   # hoy 100% con el CRM

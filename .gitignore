@@ -1,4 +1,20 @@
-# SQLite database (exceeds GitHub's 100 MB file size limit)
+# Bases de datos: el .db de origen nunca entra al repo (180 MB > límite de 100 MB de GitHub)
 *.db
 *.db-wal
 *.db-shm
+data/raw/
+data/tmp/
+
+# Secretos
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+web/dist/
