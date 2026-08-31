@@ -13,34 +13,48 @@
  */
 import { SEGMENTOS } from '../segmentos'
 
-export function Sidebar({ activo, onIr }: {
+export function Sidebar({ activo, onIr, abierto = false, onCerrar = () => {} }: {
   activo: string
   onIr: (id: string) => void
+  abierto?: boolean
+  onCerrar?: () => void
 }) {
   return (
-    <nav className="lateral" aria-label="Segmentos del panel">
-      <div className="marca">
-        <span className="logo" aria-hidden="true">V</span>
-        <span>
-          <strong>Vambe Motors</strong>
-          <em>Operación comercial</em>
-        </span>
-      </div>
+    <>
+      <button className="velo-menu" type="button" aria-label="Cerrar menú"
+              data-abierto={abierto ? 'si' : 'no'} tabIndex={abierto ? 0 : -1}
+              onClick={onCerrar} />
+      <nav id="menu-principal" className="lateral" aria-label="Segmentos del panel"
+           data-abierto={abierto ? 'si' : 'no'}>
+        <div className="marca">
+          <span className="logo" aria-hidden="true">V</span>
+          <span>
+            <strong>Vambe Motors</strong>
+            <em>Operación comercial</em>
+          </span>
+          <button className="cerrar-menu" type="button" aria-label="Cerrar menú" onClick={onCerrar}>
+            <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">
+              <path d="M4 4l12 12M16 4L4 16" fill="none" stroke="currentColor" strokeWidth="1.6"
+                    strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
 
-      <ul className="menu">
-        {SEGMENTOS.map((s) => (
-          <li key={s.id} data-apoyo={s.apoyo ? 'si' : undefined}>
-            <a href={`#/${s.id}`} aria-current={activo === s.id ? 'page' : undefined}
-               onClick={() => onIr(s.id)}>
-              <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
-                <path d={s.icono} fill="none" stroke="currentColor" strokeWidth="1.6"
-                      strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              <span>{s.rotulo}</span>
-            </a>
-          </li>
-        ))}
-      </ul>
-    </nav>
+        <ul className="menu">
+          {SEGMENTOS.map((s) => (
+            <li key={s.id} data-apoyo={s.apoyo ? 'si' : undefined}>
+              <a href={`#/${s.id}`} aria-current={activo === s.id ? 'page' : undefined}
+                 onClick={() => { onCerrar(); onIr(s.id) }}>
+                <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
+                  <path d={s.icono} fill="none" stroke="currentColor" strokeWidth="1.6"
+                        strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <span>{s.rotulo}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    </>
   )
 }

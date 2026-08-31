@@ -41,6 +41,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
   const [cargando, setCargando] = useState(true)
   const [segmento, setSegmento] = useState<string>(leerHash)
+  const [menuAbierto, setMenuAbierto] = useState(false)
 
   useEffect(() => {
     let vivo = true
@@ -76,6 +77,28 @@ export default function App() {
     return () => window.removeEventListener('hashchange', sincronizar)
   }, [])
 
+  useEffect(() => {
+    if (!menuAbierto) return
+    const cerrarConEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuAbierto(false)
+    }
+    document.body.classList.add('menu-abierto')
+    window.addEventListener('keydown', cerrarConEscape)
+    return () => {
+      document.body.classList.remove('menu-abierto')
+      window.removeEventListener('keydown', cerrarConEscape)
+    }
+  }, [menuAbierto])
+
+  useEffect(() => {
+    const angosto = window.matchMedia('(max-width: 1000px)')
+    const cerrarAlAmpliar = (e: MediaQueryListEvent) => {
+      if (!e.matches) setMenuAbierto(false)
+    }
+    angosto.addEventListener('change', cerrarAlAmpliar)
+    return () => angosto.removeEventListener('change', cerrarAlAmpliar)
+  }, [])
+
   const ir = useCallback((id: string) => {
     window.location.hash = `#/${id}`
     setSegmento(id)
@@ -92,7 +115,8 @@ export default function App() {
   return (
     <ProveedorTooltip>
       <div className="capa">
-        <Sidebar activo={actual.id} onIr={ir} />
+        <Sidebar activo={actual.id} onIr={ir} abierto={menuAbierto}
+                 onCerrar={() => setMenuAbierto(false)} />
 
         <div className="area">
           {/* Un solo bloque pegajoso: dos `position: sticky` encadenados obligan
@@ -100,6 +124,14 @@ export default function App() {
               desincroniza en cuanto cambia la cabecera. */}
           <div className="tope">
             <header className="cabecera">
+              <button className="abrir-menu" type="button" aria-label="Abrir menú"
+                      aria-controls="menu-principal" aria-expanded={menuAbierto}
+                      onClick={() => setMenuAbierto(true)}>
+                <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">
+                  <path d="M3 5h14M3 10h14M3 15h14" fill="none" stroke="currentColor"
+                        strokeWidth="1.6" strokeLinecap="round" />
+                </svg>
+              </button>
               <div className="titulo">
                 <h1>{actual.rotulo}</h1>
                 <p>{actual.pregunta}</p>

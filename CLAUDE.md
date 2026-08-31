@@ -22,7 +22,7 @@ frontend/     React + TypeScript + Vite. Sin librería de charts: SVG a mano.
                 · hallazgos.ts  las reglas de las tres conclusiones
   src/paginas/  un archivo por segmento del menú lateral
   src/segmentos.ts  los segmentos del panel y su orden
-docs/         informe.md (el entregable) · decisiones.md (por qué está armado así)
+docs/         decisiones.md (por qué está armado así)
 data/raw/     el .db de origen — fuera de git, 180 MB
 DESIGN.md     el lenguaje visual del panel (tokens, tipografía, sombras)
 ```

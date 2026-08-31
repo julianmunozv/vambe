@@ -78,6 +78,8 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
+html, body, #root { min-width: 0; max-width: 100%; }
+
 body {
   margin: 0;
   background: var(--fondo);
@@ -87,7 +89,10 @@ body {
   line-height: 20px;
   font-feature-settings: "liga";
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  overflow-x: clip;
 }
+body.menu-abierto { overflow: hidden; }
 
 h1, h2, h3, h4, p, figure, ul { margin: 0; }
 table { border-collapse: collapse; }
@@ -159,6 +164,8 @@ table { border-collapse: collapse; }
   content: ""; position: absolute; left: -10px; top: 5px; bottom: 5px;
   width: 2px; border-radius: 0 2px 2px 0; background: var(--acento);
 }
+
+.abrir-menu, .cerrar-menu, .velo-menu { display: none; }
 
 
 /* ── cabecera del segmento ──────────────────────────────────────────────── */
@@ -817,29 +824,70 @@ details.metodo li { margin-bottom: 4px; }
 }
 
 @media (max-width: 1000px) {
-  /* el menú pasa a ser una cinta arriba: en angosto una columna fija se come el
-     ancho que necesitan las tablas */
   .capa { grid-template-columns: 1fr; }
+  .area, main, .tablero, .rejilla { min-width: 0; width: 100%; }
+
+  /* En pantallas angostas el menú deja de ocupar ancho y se abre como cajón.
+     `visibility` evita que sus enlaces reciban foco mientras está cerrado. */
   .lateral {
-    position: static; height: auto; flex-direction: row; align-items: center;
-    gap: 6px; overflow-x: auto; padding: 10px 16px;
-    box-shadow: 0 1px 0 0 rgba(0, 0, 0, .08);
+    position: fixed; inset: 0 auto 0 0; z-index: 70;
+    width: min(82vw, 288px); height: 100dvh; padding: 16px 12px;
+    box-shadow: var(--elev-2); overflow-y: auto;
+    transform: translateX(calc(-100% - 16px)); visibility: hidden;
+    transition: transform .2s ease, visibility 0s linear .2s;
   }
-  .lateral .marca { padding: 0 10px 0 0; }
-  .lateral .menu { flex-direction: row; }
-  .lateral .menu a { white-space: nowrap; }
-  .lateral .menu a[aria-current="page"]::before { display: none; }
-  .tope { position: static; }
+  .lateral[data-abierto="si"] {
+    transform: translateX(0); visibility: visible;
+    transition: transform .2s ease;
+  }
+  .lateral .marca { padding: 0 4px 18px; }
+  .lateral .menu a { min-height: 40px; }
+
+  .abrir-menu, .cerrar-menu {
+    appearance: none; border: 0; background: transparent; color: var(--ink-2);
+    width: 36px; height: 36px; border-radius: 7px; cursor: pointer;
+    align-items: center; justify-content: center; flex: none;
+  }
+  .abrir-menu { display: inline-flex; margin-left: -6px; }
+  .cerrar-menu { display: inline-flex; margin-left: auto; }
+  .abrir-menu:hover, .cerrar-menu:hover { background: var(--hover); color: var(--ink); }
+  .velo-menu {
+    display: block; position: fixed; inset: 0; z-index: 60;
+    width: 100%; height: 100%; border: 0; padding: 0;
+    background: rgba(0, 0, 0, .28); opacity: 0; visibility: hidden;
+    transition: opacity .2s ease, visibility 0s linear .2s;
+  }
+  .lateral[data-abierto="si"] ~ * { min-width: 0; }
+  .velo-menu[data-abierto="si"] {
+    opacity: 1; visibility: visible; transition: opacity .2s ease;
+  }
+
   .cabecera .titulo { flex-wrap: wrap; }
   .contexto-fecha { display: none; }
 }
 
 @media (max-width: 620px) {
-  .cabecera .titulo p { white-space: normal; }
+  .cabecera { align-items: flex-start; gap: 8px; padding: 10px 12px 8px; flex-wrap: wrap; }
+  .cabecera .titulo { flex: 1; flex-direction: column; align-items: flex-start; gap: 0; }
+  .cabecera .titulo p { white-space: normal; line-height: 17px; }
+  .marca-filtro {
+    margin-left: 36px; max-width: calc(100% - 36px); white-space: normal;
+  }
+  main { padding: 12px 12px 32px; }
   .rejilla.franja { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .filtros .fila { flex-wrap: nowrap; overflow-x: auto; }
+  .filtros { max-width: 100%; overflow: hidden; }
+  .filtros .fila {
+    max-width: 100%; flex-wrap: nowrap; overflow-x: auto; padding: 8px 12px;
+    overscroll-behavior-inline: contain; scrollbar-width: thin;
+  }
   .filtros .fila > * { flex: none; }
-  .tarjeta > .cuerpo figure { overflow-x: auto; padding-bottom: 4px; }
+  .tarjeta { padding: 12px; }
+  .tarjeta > .cuerpo, .tarjeta > .cuerpo figure, .envoltura {
+    min-width: 0; max-width: 100%;
+  }
+  .tarjeta > .cuerpo figure {
+    overflow-x: auto; padding-bottom: 4px; overscroll-behavior-inline: contain;
+  }
   .tarjeta > .cuerpo figure > svg { min-width: 620px; }
   .comparacion-canales .cabecera-comparacion,
   .comparacion-canales li {
@@ -850,6 +898,28 @@ details.metodo li { margin-bottom: 4px; }
 
 @media (max-width: 420px) {
   .rejilla.franja { grid-template-columns: minmax(0, 1fr); }
+  .tarjeta > header { flex-wrap: wrap; gap: 8px; }
+  .tarjeta > header .aparte { max-width: 100%; }
+  .recorrido li {
+    grid-template-columns: minmax(0, 1fr) auto 40px; gap: 8px;
+  }
+  .recorrido .pista { grid-column: 1 / -1; grid-row: 2; }
+  .saltos li {
+    grid-template-columns: minmax(0, 1fr) 48px 88px; gap: 6px 8px;
+  }
+  .saltos .pista { grid-column: 1 / -1; grid-row: 2; }
+  .saltos .cabeza .pista { display: none; }
+  .comparacion-canales .cabecera-comparacion,
+  .comparacion-canales li {
+    grid-template-columns: minmax(0, 1fr) 58px 52px; gap: 6px;
+  }
+  .comparacion-canales .ventas-canal { display: block; text-align: right; }
+  .comparacion-canales .ventas-canal .pista { display: none; }
+  .mezcla .encabezados-canales,
+  .mezcla .detalle-canales li {
+    grid-template-columns: 10px minmax(0, 1fr) 48px 48px 60px; gap: 5px;
+  }
+  table.datos.diccionario .definicion { min-width: 240px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

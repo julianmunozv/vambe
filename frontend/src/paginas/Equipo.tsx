@@ -44,7 +44,7 @@
  * La tabla de herramientas del asistente estuvo acá y salió del panel: una tasa
  * de falla por tool es un bug de integración con dueño en producto, y nadie de
  * comercial hace nada distinto según lo que diga. Sigue calculada y servida en
- * /api/herramientas, y el hallazgo está en el informe.
+ * /api/herramientas y se contrasta con su gemelo en TypeScript.
  */
 import { useMemo, useState } from 'react'
 import type { Dashboard, VendedorRow } from '../types'
