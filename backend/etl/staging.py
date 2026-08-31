@@ -83,11 +83,14 @@ WITH primero AS (
     -- 1.761 leads tienen más de un payload y el 98,2% se contradicen: el primer
     -- mensaje mide ADQUISICIÓN. Los toques completos viven en fct_touchpoints,
     -- así que la decisión es reversible sin perder información.
-    SELECT dataset_id, contacto_id, enviado_en,
+    SELECT dataset_id, contacto_id, id, enviado_en,
            -- solo las claves que la Regla C dejó pasar; el resto es ruido inyectado
            (SELECT jsonb_object_agg(e.k, e.v) FROM jsonb_each(payload) AS e(k, v)
              WHERE e.k = ANY({arreglo_claves})) AS payload,
-           ROW_NUMBER() OVER (PARTITION BY dataset_id, contacto_id ORDER BY enviado_en) AS rn
+           -- desempate por id: sin él, dos mensajes en el mismo instante
+           -- cambian el "primer toque" entre corridas y con él la atribución
+           ROW_NUMBER() OVER (PARTITION BY dataset_id, contacto_id
+                                  ORDER BY enviado_en, id) AS rn
       FROM raw.mensajes
      WHERE payload IS NOT NULL
 ),

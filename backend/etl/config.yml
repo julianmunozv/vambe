@@ -53,6 +53,32 @@ semantica:
   remitente_humano: vendedor
   remitente_asistente: asistente
 
+cohortes:
+  # VENTANA DE OBSERVACIÓN · la edad a la que se mide cada mes de entrada.
+  #
+  # Comparar el resultado FINAL de un mes con 350 días de antigüedad contra uno
+  # con 46 no compara conversión: compara tiempo transcurrido. El mes joven
+  # todavía tiene ventas por llegar (right-censoring), así que su cifra sale
+  # baja por ser reciente, no por ser mala. Lo estándar es medir a todos a la
+  # MISMA edad — vintage analysis en riesgo de crédito, "conversión a N días" en
+  # marketing.
+  #
+  # Medido en esta base, desde la creación del lead hasta la venta:
+  #   p50 = 35,5 d · p75 = 93 d · p90 = 171 d · máx 262 d
+  # De cada 100 ventas de un mes ya cerrado, al día 30 habían ocurrido 30, al
+  # día 60 la mitad y al día 90 unas 60.
+  #
+  # 30 días es el corte elegido, y es un intercambio explícito: mide una parte
+  # de cada mes (el primer tercio de sus ventas) a cambio de dejar 12 de los 13
+  # meses comparables — con 93 días quedarían 9, y el panel perdería justamente
+  # los meses sobre los que se decide algo. Además se dice en una frase: "el
+  # primer mes del lead".
+  #
+  # Subirlo mide más de cada cohorte y muestra menos meses. Si cambia, hay que
+  # actualizar el rótulo en frontend/src/kpis/catalogo.ts (conversion_ventana),
+  # que nombra los días en pantalla.
+  ventana_dias: 30
+
 atribucion:
   # DECISIÓN DE NEGOCIO: first-touch.
   # 1.761 contactos (5,1%) tienen más de un payload y el 98,2% se contradicen

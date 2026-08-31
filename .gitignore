@@ -17,4 +17,11 @@ __pycache__/
 
 # Node
 node_modules/
-web/dist/
+frontend/dist/
+
+# El snapshot ya no se versiona: dejó de ser una fuente del panel (que ahora
+# consulta siempre al API) y quedó como insumo de `npm run verify`. Correr verify
+# ya exige el API arriba —y por lo tanto Postgres—, así que regenerarlo con
+# `python backend/snapshot/build.py` cuesta segundos y no hay razón para
+# arrastrar 3,6 MB en el repo.
+backend/snapshot/snapshot.json

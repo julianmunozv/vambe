@@ -55,9 +55,16 @@ SELECT dataset_id, id AS vendedor_id, nombre, rol, activo <> 0 AS activo,
 FCT_TRANSICIONES = """
 DROP TABLE IF EXISTS analytics.fct_transiciones CASCADE;
 CREATE TABLE analytics.fct_transiciones AS
+-- ORDEN DETERMINISTA. 241 contactos tienen dos transiciones en el MISMO
+-- timestamp; ordenar solo por ocurrido_en deja el desempate al criterio del
+-- planificador, así que el mismo dato producía números distintos en cada
+-- reconstrucción (leads que cambiaban de etapa actual entre corridas).
+-- El desempate correcto lo da el propio dato: etapa_desde encadena con
+-- etapa_hasta, así que el orden del embudo ES el orden real de los eventos.
 SELECT dataset_id, contacto_id, etapa_desde, etapa_hasta, orden_desde, orden_hasta,
        llega_a_terminal, autor_tipo, ocurrido_en,
-       ROW_NUMBER() OVER (PARTITION BY dataset_id, contacto_id ORDER BY ocurrido_en) AS n_movimiento,
+       ROW_NUMBER() OVER (PARTITION BY dataset_id, contacto_id
+                              ORDER BY ocurrido_en, orden_desde, orden_hasta) AS n_movimiento,
        orden_hasta - orden_desde AS salto
   FROM stg.transiciones;
 """
@@ -126,7 +133,10 @@ posteriores AS (
            LEAD(t.etapa_hasta) OVER w  AS salio_hacia
       FROM analytics.fct_transiciones t
       JOIN base b ON b.dataset_id = t.dataset_id AND b.contacto_id = t.contacto_id
-    WINDOW w AS (PARTITION BY t.dataset_id, t.contacto_id ORDER BY t.ocurrido_en)
+    -- mismo desempate que en fct_transiciones: si difieren, una estadía podría
+    -- cerrarse contra una transición que en la otra tabla va después
+    WINDOW w AS (PARTITION BY t.dataset_id, t.contacto_id
+                     ORDER BY t.ocurrido_en, t.orden_desde, t.orden_hasta)
 ),
 todas AS (
     SELECT * FROM inicial UNION ALL SELECT * FROM posteriores
@@ -160,15 +170,18 @@ def fct_touchpoints(cfg: dict, claves: list[str]) -> str:
 DROP TABLE IF EXISTS analytics.fct_touchpoints CASCADE;
 CREATE TABLE analytics.fct_touchpoints AS
 WITH limpio AS (
-    SELECT dataset_id, contacto_id, enviado_en::timestamptz AS ocurrido_en,
+    SELECT dataset_id, contacto_id, id, enviado_en::timestamptz AS ocurrido_en,
            (SELECT jsonb_object_agg(e.k, e.v) FROM jsonb_each(payload) AS e(k, v)
              WHERE e.k = ANY({arr})) AS payload
       FROM raw.mensajes WHERE payload IS NOT NULL
 )
+-- Desempate por id (la clave sustituta es el orden de inserción): sin él,
+-- dos mensajes en el mismo instante harían que "primer toque" cambie de
+-- corrida en corrida, y la atribución first-touch depende justo de eso.
 SELECT l.dataset_id, l.contacto_id, l.ocurrido_en,
-       ROW_NUMBER() OVER (PARTITION BY l.dataset_id, l.contacto_id ORDER BY l.ocurrido_en) AS n_toque,
-       ROW_NUMBER() OVER (PARTITION BY l.dataset_id, l.contacto_id ORDER BY l.ocurrido_en) = 1 AS es_primero,
-       ROW_NUMBER() OVER (PARTITION BY l.dataset_id, l.contacto_id ORDER BY l.ocurrido_en DESC) = 1 AS es_ultimo,
+       ROW_NUMBER() OVER (PARTITION BY l.dataset_id, l.contacto_id ORDER BY l.ocurrido_en, l.id) AS n_toque,
+       ROW_NUMBER() OVER (PARTITION BY l.dataset_id, l.contacto_id ORDER BY l.ocurrido_en, l.id) = 1 AS es_primero,
+       ROW_NUMBER() OVER (PARTITION BY l.dataset_id, l.contacto_id ORDER BY l.ocurrido_en DESC, l.id DESC) = 1 AS es_ultimo,
        COALESCE(CASE {casos} END, 'outbound') AS canal,
        CASE {detalle} END AS origen_detalle,
        da.campaign_name AS campana,
@@ -245,6 +258,21 @@ tiempos AS (
     SELECT dataset_id, contacto_id,
            ROUND(EXTRACT(EPOCH FROM MAX(ocurrido_en) - MIN(ocurrido_en)) / 86400.0, 2) AS dias_en_embudo
       FROM analytics.fct_transiciones GROUP BY 1, 2
+),
+venta AS (
+    -- CUÁNDO se ganó cada lead. Es lo que permite medir todos los meses a la
+    -- misma edad ("compraron dentro de sus primeros N días") en vez de comparar
+    -- el resultado final de una cohorte de un año contra una de un mes.
+    -- Desde la CREACIÓN del lead y no desde su primer movimiento: dias_en_embudo
+    -- arranca en la primera transición y se come la espera inicial (p50 de 25,0 d
+    -- contra 35,5 d reales).
+    -- Días REALES transcurridos, no de calendario. Comparar contra
+    -- `creado_en + interval '30 days'` mide 30 d 1 h cuando el tramo cruza el
+    -- cambio de hora, y eso metía un lead de 30,04 d dentro de la ventana.
+    SELECT dataset_id, contacto_id, MIN(entro_en) AS ganado_en
+      FROM analytics.fct_estadias
+     WHERE etapa = {_lit(sem['etapa_exito'])}
+     GROUP BY 1, 2
 )
 SELECT c.dataset_id,
        c.id                                     AS contacto_id,
@@ -259,6 +287,8 @@ SELECT c.dataset_id,
        de.es_terminal AND de.nombre <> {_lit(sem['etapa_exito'])} AS es_perdido,
        prof.nombre                              AS etapa_mas_profunda,
        t.dias_en_embudo,
+       ROUND(EXTRACT(EPOCH FROM v.ganado_en - c.creado_en::timestamptz) / 86400.0, 2)
+                                                AS dias_a_ganado,
        -- atribución first-touch; 'crm:x' se normaliza al canal que representa
        split_part(a.canal_bruto, ':', 1) = 'crm' AS canal_desde_crm,
        CASE WHEN a.canal_bruto LIKE 'crm:%' THEN 'outbound' ELSE a.canal_bruto END AS canal,
@@ -290,6 +320,7 @@ SELECT c.dataset_id,
   LEFT JOIN respuesta resp    ON resp.dataset_id = c.dataset_id AND resp.contacto_id = c.id
   LEFT JOIN recorrido r       ON r.dataset_id = c.dataset_id AND r.contacto_id = c.id
   LEFT JOIN tiempos t         ON t.dataset_id = c.dataset_id AND t.contacto_id = c.id
+  LEFT JOIN venta v           ON v.dataset_id = c.dataset_id AND v.contacto_id = c.id
   LEFT JOIN profundidad p     ON p.dataset_id = c.dataset_id AND p.contacto_id = c.id
   LEFT JOIN analytics.dim_etapas prof
     ON prof.dataset_id = c.dataset_id AND prof.orden = p.orden_max AND prof.embudo = de.embudo
