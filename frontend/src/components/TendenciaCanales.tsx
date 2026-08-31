@@ -65,10 +65,6 @@ interface Mes {
 interface Serie {
   canal: string
   leads: number
-  /** Ventas de cualquier fecha, no solo las de la ventana: es el puente hacia la
-   *  tasa que publica la tarjeta de al lado. Sin él, el mismo canal aparece con
-   *  1,2% acá y 4,5% a diez centímetros, y nada explica la diferencia. */
-  ganados: number
   /** Una entrada por mes, alineada con `meses`. null = el canal no tuvo leads. */
   puntos: (number | null)[]
   volumenes: number[]
@@ -131,11 +127,10 @@ export function TendenciaCanales({ filas, ventanaDias }: {
   for (const f of filas) {
     let s = porCanal.get(f.canal)
     if (!s) porCanal.set(f.canal, (s = {
-      canal: f.canal, leads: 0, ganados: 0,
+      canal: f.canal, leads: 0,
       puntos: meses.map(() => null), volumenes: meses.map(() => 0),
     }))
     s.leads += f.leads
-    s.ganados += f.ganados
     s.puntos[idx.get(f.mes)!] = f.tasa_ventana
     s.volumenes[idx.get(f.mes)!] = f.leads
   }
@@ -185,13 +180,7 @@ export function TendenciaCanales({ filas, ventanaDias }: {
 
   const iSin = meses.findIndex((m) => !m.medible)
 
-  const totalSeleccionado = activas.reduce((total, s) => total + s.leads, 0)
   const nombres = activas.map((s) => canalLabel(s.canal))
-  /* La tasa de cualquier fecha de la selección, sumando ventas y leads y no
-     promediando tasas: con dos canales de volumen distinto, el promedio de dos
-     porcentajes no es el porcentaje del conjunto. */
-  const ganadosSeleccion = activas.reduce((total, s) => total + s.ganados, 0)
-  const tasaTotal = totalSeleccionado ? (100 * ganadosSeleccion) / totalSeleccionado : null
 
   return (
     <figure className="apretada">
@@ -286,11 +275,8 @@ export function TendenciaCanales({ filas, ventanaDias }: {
       </div>
 
       <figcaption>
-        Cada punto es qué parte de los leads que entraron ese mes compró dentro de sus primeros{' '}
-        {ventanaDias} días: la única vara con la que dos meses se comparan. Contando también las
-        ventas más tardías, {activas.length === 1 ? nombres[0] : 'la selección'} convierte{' '}
-        <b>{pct1(tasaTotal)}</b> sobre {n0(totalSeleccionado)} leads. Los meses de la derecha
-        entraron hace muy poco: a sus leads todavía les faltan días de esa ventana.
+        Cada punto muestra qué parte de los leads que entraron ese mes compró durante sus primeros{' '}
+        {ventanaDias} días.
       </figcaption>
     </figure>
   )
