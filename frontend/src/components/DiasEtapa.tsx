@@ -25,7 +25,7 @@ function Fila({ e, max, lenta }: { e: EtapaRow; max: number; lenta: boolean }) {
     titulo: e.etapa,
     filas: [
       ['Días típicos en la etapa', dias1(e.dias_mediana)],
-      ['Leads que pasaron por acá', n0(e.alcanzaron)],
+      ['Leads que pasaron por esta etapa', n0(e.alcanzaron)],
     ],
     texto: 'La mitad de los leads se mueve antes de ese plazo y la otra mitad después.',
     nota: lenta ? 'Es la etapa donde el lead se queda más tiempo quieto' : undefined,
@@ -56,7 +56,7 @@ export function DiasEtapa({ etapas, ciclo }: { etapas: EtapaRow[]; ciclo: number
         {con.map((e) => <Fila key={e.etapa} e={e} max={max} lenta={e.etapa === lenta.etapa} />)}
       </ul>
       <p className="pie">
-        No se suman: cada cifra es lo que el lead se queda dentro de esa etapa.
+        No se suman: cada cifra representa el tiempo que el lead permanece en esa etapa.
         {ciclo !== null && ` De punta a punta, una venta se cierra en ${dias1(ciclo)}.`}
       </p>
     </div>

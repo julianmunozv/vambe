@@ -42,7 +42,7 @@ export function Tarjeta({ titulo, nota, aside, accion, children, alto }: {
   )
 }
 
-/** Una cifra de esquina: rótulo chico arriba, valor y variación abajo.
+/** Una cifra de esquina: rótulo pequeño arriba, valor y variación abajo.
  *
  * El rótulo acepta un nodo y no solo un string para que una cifra que ES una
  * métrica del catálogo entre con su `Rotulo` —y con su definición al apuntarla—

@@ -39,7 +39,7 @@ function Fila({ p, esPeor }: { p: Paso; esPeor: boolean }) {
     <li {...tip} data-venta={p.esVenta ? 'si' : 'no'} data-peor={esPeor ? 'si' : 'no'}>
       <span className="rotulo">{p.rotulo}</span>
       <span className="pista">
-        {/* 1,5% de piso: un paso chico tiene que dejar rastro visible */}
+        {/* 1,5% de piso: un paso pequeño tiene que dejar rastro visible */}
         <i className="paso" style={{ width: `${Math.max(1.5, p.share)}%` }} />
       </span>
       <span className="valor num">{n0(p.valor)}</span>

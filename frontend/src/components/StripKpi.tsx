@@ -1,5 +1,5 @@
 /*
- * La fila de indicadores: cinco tarjetas chicas, una sola línea, sin scroll.
+ * La fila de indicadores: cinco tarjetas pequeñas, una sola línea, sin scroll.
  *
  * La versión anterior tenía cinco bloques de 32px de cifra y una cabecera aparte
  * con la conversión a 56px — ocupaba media pantalla para decir cinco números.

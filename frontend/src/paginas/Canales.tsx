@@ -110,7 +110,7 @@ export function PaginaCanales({ d }: { d: Dashboard }) {
       </div>
 
       <Tarjeta titulo="Cómo convierte cada fuente"
-               nota="Adentro de un canal hay fuentes que rinden el doble que otras"
+               nota="Dentro de un canal hay fuentes que rinden el doble que otras"
                aside={mejorOrigen && <Resalte rotulo="El que mejor convierte"
                                               valor={pct1(mejorOrigen.tasa_conversion)} />}>
         <Origenes origenes={d.origenes} />

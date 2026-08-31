@@ -1,0 +1,8 @@
+{
+  "name": "vambe-infra",
+  "private": true,
+  "description": "Solo el SDK que evalúa .railway/railway.ts (la infra de Railway). El panel vive en frontend/ con su propio package.json; acá no hay build ni dependencias de la app.",
+  "devDependencies": {
+    "railway": "^3.11.0"
+  }
+}

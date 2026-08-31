@@ -1,7 +1,7 @@
 # Vambe Motors · Analytics & Dashboard
 
 Prueba técnica de Solutions Architect. KPIs y panel comercial sobre un export
-SQLite de una concesionaria: 34.600 leads, 12 meses, 1,17 M de filas de origen.
+SQLite de un concesionario: 34.600 leads, 12 meses, 1,17 M de filas de origen.
 
 **Entregables**
 - **[docs/informe.md](docs/informe.md)** — qué KPIs elegí, qué encontré, qué

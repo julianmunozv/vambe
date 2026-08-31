@@ -3,6 +3,8 @@ from __future__ import annotations
 import os, pathlib
 import psycopg
 
+import config
+
 
 def dsn() -> str:
     """La URL sale del entorno; el .env es solo la comodidad de desarrollo.
@@ -23,4 +25,17 @@ def dsn() -> str:
 
 
 def conectar(autocommit: bool = False) -> psycopg.Connection:
-    return psycopg.connect(dsn(), autocommit=autocommit)
+    """Toda conexión del proyecto pasa por acá — ETL, API y snapshot.
+
+    La zona horaria se impone en la conexión y no se hereda del servidor: es lo
+    que decide a qué mes pertenece un timestamptz, así que dejarla al default
+    hace que el mismo export dé un número distinto en cada máquina. Va como
+    opción de arranque (`-c timezone=`) y no como un SET posterior para que
+    valga desde la primera consulta, incluso si alguien reusa la conexión sin
+    pasar por este módulo.
+    """
+    return psycopg.connect(
+        dsn(),
+        autocommit=autocommit,
+        options=f"-c timezone={config.zona_horaria()}",
+    )
