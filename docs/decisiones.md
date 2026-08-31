@@ -188,8 +188,8 @@ Lo que salió de ahí y por qué:
 - **La tabla de herramientas del asistente** salió de Equipo. Es la única cifra
   del panel cuyo dueño no está en comercial: la falla de una tool se arregla en
   producto, una vez, y ninguna decisión del segmento («a quién le pido qué»)
-  cambia según lo que diga. El dato no se perdió — está en el informe (§2.5) y en
-  `/api/herramientas`, con su gemelo en TS y su comparación en `npm run verify`.
+  cambia según lo que diga. El dato sigue disponible en `/api/herramientas`, con
+  su gemelo en TS y su comparación en `npm run verify`.
 
 Y dos cifras que hubo que **arreglar**, no solo mover:
 
