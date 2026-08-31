@@ -83,14 +83,14 @@ export async function inicializar(): Promise<{ fuente: Fuente; opciones: Opcione
   } catch (e) {
     throw new Error(
       `no se pudo contactar al API (${e instanceof Error ? e.message : 'error de red'}). ` +
-      'Verificá que el backend esté corriendo y que DATABASE_URL apunte a la base.',
+      'Verifica que el backend esté activo y que DATABASE_URL apunte a la base.',
     )
   }
   if (!r.ok) {
     // 503 es el caso esperable: el API vive pero todavía no hay un dataset
     // procesado por el ETL. Merece un mensaje propio, no un código suelto.
     const detalle = r.status === 503
-      ? 'el API está arriba pero no hay ningún dataset procesado todavía; corré el ETL'
+      ? 'el API está activo, pero todavía no hay ningún conjunto de datos procesado; ejecuta el ETL'
       : `el API respondió ${r.status}`
     throw new Error(detalle)
   }

@@ -8,7 +8,7 @@ Prueba técnica Solutions Architect · export de 12 meses (1 jun 2025 – 15 jun
 ## 1 · Qué KPIs elegí y por qué
 
 El criterio para incluir una métrica fue uno solo: **¿cambia una decisión?** Una
-concesionaria que opera así toma cuatro decisiones recurrentes, y cada bloque del
+concesionario que opera así toma cuatro decisiones recurrentes, y cada bloque del
 panel existe para una de ellas.
 
 | Decisión | KPI | Por qué ese y no otro |

@@ -1,5 +1,5 @@
 /*
- * EL ÍNDICE DE KPIs DEL PANEL. Si buscás dónde se calcula un número, empezá acá.
+ * EL ÍNDICE DE KPIs DEL PANEL. Si buscas dónde se calcula un número, empieza aquí.
  *
  * Cada sección del `Dashboard` sale de una función, y cada familia vive en su
  * propio archivo — con el MISMO nombre que su gemelo en SQL:

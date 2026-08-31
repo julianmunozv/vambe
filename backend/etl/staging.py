@@ -1,7 +1,7 @@
 """
 FASE 3 · Staging: vistas que limpian, sin combinar.
 
-Cada vista lee de UNA tabla de hechos (más dimensiones chicas para decodificar
+Cada vista lee de UNA tabla de hechos (más dimensiones pequeñas para decodificar
 ids a nombres). Los cruces entre hechos son trabajo de analytics.
 
 Lo importante: las decisiones de limpieza NO están escritas acá. Salen de dos

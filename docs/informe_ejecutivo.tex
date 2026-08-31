@@ -1,0 +1,100 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage[margin=0.8in]{geometry}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{titlesec}
+
+% Tipografía y espaciado
+\renewcommand{\familydefault}{\sfdefault}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.45em}
+\setlist[itemize]{leftmargin=*,itemsep=0.6em}
+\titlespacing*{\section}{0pt}{1.2em}{0.5em}
+\titlespacing*{\subsection}{0pt}{1em}{0.4em}
+
+\definecolor{darkblue}{RGB}{24,57,99}
+
+\begin{document}
+
+\begin{flushleft}
+{\LARGE\color{darkblue}\textbf{Vambe Motors}}\\[0.5em]
+{\small
+Julián Muñoz Varas $\cdot$
+Prueba técnica Solutions Architect\\
+
+Dashboard: www.autoideal.cl
+}
+\end{flushleft}
+
+\vspace{0.6em}
+
+\section*{KPIs}
+
+\begin{itemize}
+
+\item \textbf{Leads recibidos.}
+Cantidad de oportunidades comerciales que ingresaron durante el período. El dashboard registra \textbf{34.600 leads}.
+
+\textit{¿Por qué importa?} Mide si los canales generan suficiente demanda para alimentar al equipo comercial. El volumen, sin embargo, debe leerse junto con la conversión: más leads no necesariamente significan más ventas.
+
+\item \textbf{Ventas ganadas.}
+Cantidad de leads que llegaron a una etapa marcada como ganada. El dashboard registra \textbf{3.426 ventas}.
+
+\textit{¿Por qué importa?} Es el resultado comercial del embudo. Para traducirlo a impacto económico todavía falta incorporar el monto y el margen de cada operación.
+
+\item \textbf{Tasa de conversión.}
+Porcentaje de todos los leads que terminaron en una venta:
+\[
+\text{Conversión}=
+\frac{\text{ventas ganadas}}{\text{leads recibidos}}\times 100
+=\frac{3.426}{34.600}\times 100
+=\textbf{9,9\%}
+\]
+
+\textit{¿Por qué importa?} Permite comparar la eficiencia de canales, campañas y vendedores aunque manejen volúmenes distintos. Siempre debe acompañarse del número de casos para no sobrerrepresentar segmentos pequeños.
+
+\item \textbf{Leads activos.}
+Leads que siguen abiertos y no llevan más de 90 días detenidos en la misma etapa. De los 14.361 leads abiertos, 8.738 superan ese umbral; por lo tanto, hay \textbf{5.623 leads activos}.
+
+\textit{¿Por qué importa?} Es una aproximación más realista al trabajo comercial pendiente. Si se reportaran todos los leads abiertos como cartera, el 60,8\% correspondería a oportunidades que llevan más de 90 días sin avanzar.
+
+\item \textbf{Ciclo de venta.}
+Días transcurridos entre la entrada del lead y el cierre ganado. La \textbf{mediana es de 25 días}: la mitad de las ventas cierra antes de ese plazo y la otra mitad después. El percentil 75 es de 93 días.
+
+\textit{¿Por qué importa?} Ayuda a planificar seguimiento y capacidad, y evita evaluar como fallidas oportunidades que todavía están dentro de un plazo normal de cierre. 
+
+\end{itemize}
+
+\section*{Hallazgos principales}
+
+\subsection*{1. Meta Ads concentra el volumen; orgánico concentra las ventas}
+
+\textbf{Evidencia.}
+Meta Ads concentra el 44,6\% de los leads, pero solo el 20,2\% de las ventas, con una conversión de 4,5\%. El canal orgánico representa el 13,6\% de los leads, genera el 34,0\% de las ventas y convierte 24,7\%.
+
+Dentro de Meta Ads, retargeting convierte 7,5\% (240 ventas sobre 3.216 leads), mientras que audiencias similares convierte 3,8\% (296 sobre 7.716). Audiencias similares concentra el 50,0\% de los \textbf{leads de Meta}; el dataset no contiene inversión publicitaria.
+
+\subsection*{2. Algunos leads nunca reciben respuesta}
+
+\textbf{Evidencia.}
+La IA transfirió 15.567 leads a vendedores. De ellos, 2.233 (14,3\%) no tienen una respuesta humana posterior registrada y convierten 3,1\%; los 13.334 que sí recibieron respuesta convierten 11,1\%.
+
+\subsection*{3. El 60,8\% de los leads abiertos lleva más de 90 días sin avanzar}
+
+\textbf{Evidencia.}
+De 14.361 leads abiertos, 8.738 llevan más de 90 días en la misma etapa. La mayor concentración está en \textit{Contactado} (2.861) y \textit{Nuevo Lead} (2.659); el caso más antiguo acumula 379 días.
+
+\section*{Recomendación a la gerencia}
+
+La recomendación es enfocarse en tres frentes. Primero, asegurarse de que el equipo responda todos los leads transferidos, usando alertas y reasignación cuando sea necesario. Segundo, potenciar los canales y campañas que muestran una mejor conversión, especialmente el canal orgánico y retargeting. Tercero, definir qué hacer con los leads que llevan demasiado tiempo sin movimiento: intentar reactivarlos y, si no responden, cerrarlos como inactivos para mantener un pipeline ordenado.
+
+\section*{Aspectos que me faltó profundizar}
+
+Me faltó profundizar en el rendimiento individual del equipo, comparando a cada vendedor dentro de canales y tipos de leads similares para separar desempeño de asignación. También habría sido útil estudiar mejor la velocidad de respuesta por vendedor, canal y horario, para determinar si existen tramos donde responder antes mejora realmente la conversión. Por último, faltó un análisis geográfico por ciudad o sucursal que permitiera detectar diferencias de volumen, conversión y cartera activa, e identificar oportunidades o problemas específicos de cada zona.
+
+\end{document}

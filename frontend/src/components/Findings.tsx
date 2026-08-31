@@ -17,7 +17,7 @@ export function Findings({ d, onIr, apilados }: {
   d: Dashboard; onIr: (id: string) => void; apilados?: boolean
 }) {
   const cards = hallazgos(d)
-  if (!cards.length) return <p className="vacio">La selección es muy chica para sacar conclusiones.</p>
+  if (!cards.length) return <p className="vacio">La selección es muy pequeña para extraer conclusiones.</p>
   return (
     <div className={apilados ? 'hallazgos apilados' : 'rejilla c3 hallazgos'}>
       {cards.map((c) => (

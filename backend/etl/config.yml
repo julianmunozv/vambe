@@ -59,7 +59,7 @@ semantica:
   # corra: la base de desarrollo estaba en America/Santiago y la de producción
   # en Etc/UTC, y `npm run verify` marcó 6 casos con ventas de diferencia — una
   # venta cerrada a las 21:30 de un 30 de septiembre en Santiago es de octubre
-  # en UTC. La concesionaria es chilena y su septiembre es el de Santiago, así
+  # en UTC. El concesionario es chileno y su septiembre es el de Santiago, así
   # que la zona se declara acá y `db.conectar` la impone en cada conexión.
   zona_horaria: America/Santiago
 
@@ -116,7 +116,7 @@ atribucion:
       clave: web_context.referrer
       canal: web
     # Fallback al CRM. Recupera los 8.132 leads (23,5%) que no traen señal
-    # entrante en el payload: son OUTBOUND (la concesionaria los contactó).
+    # entrante en el payload: son OUTBOUND (el concesionario los contactó).
     # Verificado: payload.source del CRM coincide 100% con el canal derivado
     # y no se contradice en ninguno de los 34.600 contactos.
     - fuente: integracion_crm.payload

@@ -1,5 +1,5 @@
 """
-EL ÍNDICE DE KPIs. Si buscás dónde se calcula un número, empezá acá.
+EL ÍNDICE DE KPIs. Si buscas dónde se calcula un número, empieza aquí.
 
 Un KPI = una función = una query legible. Cada familia vive en su propio módulo
 y el mapa de abajo dice cuál:

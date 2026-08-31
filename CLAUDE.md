@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 Prueba técnica de Solutions Architect para Vambe: KPIs y dashboard sobre un
-export SQLite de una concesionaria (34.600 leads, 12 meses, 1,17 M de filas).
+export SQLite de un concesionario (34.600 leads, 12 meses, 1,17 M de filas).
 El enunciado está en `Prueba Técnica Solutions Architect-*.pdf`.
 
 ## Estructura
@@ -135,7 +135,7 @@ resuelve el mes en la zona de la SESIÓN. La base de desarrollo estaba en
 `America/Santiago` y la de producción en `Etc/UTC`, y el mismo export dio
 números distintos: `npm run verify` marcó 6 casos con ±1 venta en `ventas_mes`
 —una venta cerrada 21:30 del 30 de septiembre en Santiago es de octubre en UTC—.
-La concesionaria es chilena y su septiembre es el de Santiago: la zona se
+El concesionario es chileno y su septiembre es el de Santiago: la zona se
 declara en `config.yml → semantica.zona_horaria` y `db.conectar` la pasa como
 opción de arranque. No configurar la zona del servidor: eso arregla una máquina,
 no el cálculo.

@@ -18,9 +18,9 @@ export function Method({ ventanaDias, p75Venta, totalLeads }: {
         <div>
           <h4>De dónde salen los números</h4>
           <p>
-            Un único export SQLite se carga tal cual a <code>raw</code>, se perfila, y recién ahí se
-            modela. Todo lo que se ve acá sale de <code>analytics.fct_leads</code> — una fila por lead,
-            {' '}{totalLeads.toLocaleString('es-CL')} en total — y de las tablas de hecho que cuelgan de
+            Un único export SQLite se carga tal cual a <code>raw</code>, se perfila y solo entonces se
+            modela. Todo lo que se ve aquí sale de <code>analytics.fct_leads</code> — una fila por lead,
+            {' '}{totalLeads.toLocaleString('es-CL')} en total — y de las tablas de hechos relacionadas con
             ella. Contar leads desde una tabla de grano más fino (mensajes, por ejemplo) infla el canal
             orgánico un 20,3%.
           </p>
