@@ -1,0 +1,857 @@
+/*
+ * Sistema visual del panel.
+ *
+ * No es una elección nueva: los tokens salen de DESIGN.md, el lenguaje de diseño
+ * ya adoptado en el repo (Geist, escala de 4px, borde como sombra, pesos
+ * 400/500/600, azul #0072F5 como único acento de interfaz).
+ *
+ * La paleta de DATOS es aparte y está validada para daltonismo: el acento de
+ * interfaz no puede hacer también de color de serie sin volver ambiguo qué es un
+ * control y qué es una medición.
+ *
+ * Tema único y claro, por decisión: DESIGN.md define un sistema claro completo.
+ * Por eso cada color se pinta explícito y nada queda a merced del fondo del host.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* superficies e ink — DESIGN.md §2 */
+  --fondo:      #FAFAFA;
+  --superficie: #FFFFFF;
+  --hundido:    #F2F2F2;
+  --hover:      #EBEBEB;
+  --ink:        #171717;
+  --ink-2:      #4D4D4D;
+  --ink-3:      #8F8F8F;
+  --acento:     #0072F5;
+  --acento-suave: rgba(0, 114, 245, .08);
+
+  /* borde como sombra: no altera el box model y se compone en capas */
+  --borde:       0 0 0 1px rgba(0, 0, 0, .08);
+  --elev-1:      0 0 0 1px rgba(0, 0, 0, .08), 0 2px 2px rgba(0, 0, 0, .04);
+  --elev-2:      0 0 0 1px rgba(0, 0, 0, .08), 0 2px 2px rgba(0, 0, 0, .04),
+                 0 8px 16px -4px rgba(0, 0, 0, .04);
+  --anillo-foco: 0 0 0 2px #FFF, 0 0 0 4px var(--acento);
+
+  /* series categóricas — validadas (ΔE CVD adyacente 9,1; normal 22,9).
+     Amarillo y aqua quedan bajo 3:1 contra el blanco, así que todo gráfico que
+     los use lleva etiqueta directa visible y tabla al lado. */
+  --serie-1: #2a78d6;   /* ad       */
+  --serie-2: #eb6834;   /* outbound */
+  --serie-3: #1baf7a;   /* form     */
+  --serie-4: #eda100;   /* organico */
+
+  /* rampa ordinal azul para antigüedad: claro = fresco, oscuro = rancio.
+     Arranca en el paso 250, el más claro que aún despega del blanco. */
+  --edad-1: #86b6ef;
+  --edad-2: #5598e7;
+  --edad-3: #2a78d6;
+  --edad-4: #184f95;
+
+  /* Volumen de contexto: neutro deliberado, NO un color de serie. Las barras de
+     leads en la tendencia son el telón de fondo de la línea de conversión; darles
+     un color categórico las pondría a competir con la medición y obligaría a
+     revalidar la paleta para daltonismo. */
+  --volumen:         #DDE3E9;
+  --volumen-parcial: #EDF0F3;
+
+  /* estado — reservados, nunca reutilizados como serie */
+  --malo:   #E5484D;
+  /* Lo que se cae en un salto del embudo. Es un tinte de --malo, no una serie:
+     dice «esto se perdió», igual que el rojo de una celda. Va bastante más claro
+     que el azul con el que convive (L 70 contra 49) para que el par se separe
+     por luminosidad y no por tono — así el gráfico se sigue leyendo con
+     cualquier daltonismo. Queda bajo 3:1 contra el blanco, así que cada tramo
+     de pérdida lleva su cifra escrita al lado, nunca solo el color. */
+  --perdida: #E9959A;
+  --alerta: #FF990A;
+  --bueno:  #1baf7a;
+
+  --reja:  rgba(0, 0, 0, .06);
+  --ancho: 1560px;
+  --lateral: 208px;
+  /* separación única entre tarjetas. Un tablero se lee por proximidad: 40px
+     entre bloques los convierte en secciones de un documento. */
+  --aire: 12px;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--fondo);
+  color: var(--ink);
+  font-family: Geist, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 14px;
+  line-height: 20px;
+  font-feature-settings: "liga";
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, p, figure, ul { margin: 0; }
+table { border-collapse: collapse; }
+
+.num { font-variant-numeric: tabular-nums; }
+.mono {
+  font-family: "Geist Mono", ui-monospace, SFMono-Regular, "Roboto Mono", monospace;
+  font-size: 13px;
+  font-weight: 500;
+}
+.vacio { color: var(--ink-3); font-size: 13px; padding: 8px 0; }
+.aviso { padding: 64px 24px; color: var(--ink-2); text-align: center; }
+.punto { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
+
+:where(button, select, summary, a, .definible):focus-visible {
+  outline: none;
+  box-shadow: var(--anillo-foco);
+  border-radius: 6px;
+}
+
+/* Un rótulo con definición atrás. El punteado lo anuncia: sin la marca, nadie
+   descubre que apuntar el encabezado explica qué mide la columna. */
+.definible {
+  text-decoration: underline dotted rgba(0, 0, 0, .28);
+  text-underline-offset: 3px;
+  cursor: help;
+}
+.definible:hover { text-decoration-color: var(--acento); color: var(--ink); }
+
+/* ── armazón ────────────────────────────────────────────────────────────── */
+
+.capa { display: grid; grid-template-columns: var(--lateral) minmax(0, 1fr); min-height: 100vh; }
+.area { min-width: 0; }
+
+/* ── menú lateral ───────────────────────────────────────────────────────── */
+
+.lateral {
+  position: sticky; top: 0; height: 100vh; z-index: 40;
+  display: flex; flex-direction: column;
+  background: var(--superficie);
+  box-shadow: 1px 0 0 0 rgba(0, 0, 0, .08);
+  padding: 16px 10px 14px;
+}
+.lateral .marca { display: flex; align-items: center; gap: 9px; padding: 0 6px 16px; }
+.lateral .marca .logo {
+  width: 26px; height: 26px; border-radius: 7px; flex: none;
+  background: var(--ink); color: #FFF;
+  display: grid; place-items: center; font-weight: 600; font-size: 14px;
+}
+.lateral .marca strong { display: block; font-weight: 600; font-size: 13.5px; letter-spacing: -.28px; }
+.lateral .marca em { display: block; font-style: normal; font-size: 11px; color: var(--ink-3); }
+
+.lateral .menu { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.lateral .menu a {
+  position: relative;
+  display: flex; align-items: center; gap: 9px;
+  padding: 7px 9px; border-radius: 7px;
+  color: var(--ink-2); text-decoration: none;
+  font-size: 13px; font-weight: 500;
+}
+.lateral .menu a svg { flex: none; color: var(--ink-3); }
+/* los segmentos de apoyo se consultan, no se recorren: van bajo una línea */
+.lateral .menu li[data-apoyo] { margin-top: 8px; padding-top: 8px; box-shadow: inset 0 1px 0 0 var(--reja); }
+.lateral .menu a:hover { background: var(--hundido); color: var(--ink); }
+.lateral .menu a[aria-current="page"] { background: var(--acento-suave); color: var(--acento); }
+.lateral .menu a[aria-current="page"] svg { color: var(--acento); }
+/* barra de 2px a la izquierda: el color solo no alcanza para daltonismo */
+.lateral .menu a[aria-current="page"]::before {
+  content: ""; position: absolute; left: -10px; top: 5px; bottom: 5px;
+  width: 2px; border-radius: 0 2px 2px 0; background: var(--acento);
+}
+
+
+/* ── cabecera del segmento ──────────────────────────────────────────────── */
+
+/* Cabecera y filtros se pegan JUNTOS, como un bloque. Encadenar dos elementos
+   pegajosos obliga a escribir el alto del primero en el `top` del segundo, y ese
+   número queda viejo apenas cambia la cabecera: quedaba una banda transparente
+   entre los dos y la primera tarjeta perdía su separación. */
+.tope {
+  position: sticky; top: 0; z-index: 30;
+  background: rgba(250, 250, 250, .88);
+  backdrop-filter: saturate(180%) blur(12px);
+  box-shadow: 0 1px 0 0 rgba(0, 0, 0, .07);
+}
+
+.cabecera {
+  display: flex; align-items: center; gap: 16px;
+  padding: 14px 20px 10px;
+}
+/* título y pregunta en la MISMA línea: apilarlos costaba 20px de alto en todas
+   las pantallas para una frase que se lee una vez */
+.cabecera .titulo { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.cabecera h1 { font-size: 19px; font-weight: 600; letter-spacing: -.6px; line-height: 26px; }
+.cabecera .titulo p { color: var(--ink-3); font-size: 12.5px; white-space: nowrap; }
+.contexto-fecha {
+  margin-left: auto; flex: none; font-size: 11.5px; color: var(--ink-3); white-space: nowrap;
+}
+.marca-filtro {
+  margin-left: 0; flex: none;
+  font-size: 12px; color: var(--acento); font-weight: 500;
+  background: var(--acento-suave); padding: 5px 10px; border-radius: 999px;
+}
+
+/* ── barra de filtros ───────────────────────────────────────────────────── */
+
+.filtros { background: var(--superficie); box-shadow: inset 0 1px 0 0 var(--reja); }
+.filtros .fila {
+  max-width: var(--ancho); margin: 0 auto;
+  padding: 8px 20px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+}
+.filtros label {
+  font-size: 12px; color: var(--ink-3); letter-spacing: .3px;
+  text-transform: uppercase; margin-right: 4px;
+}
+.chip {
+  appearance: none; cursor: pointer;
+  height: 28px; padding: 0 10px; border: 0; border-radius: 6px;
+  background: transparent; box-shadow: var(--borde);
+  font: inherit; font-size: 13px; color: var(--ink-2);
+}
+.chip:hover { background: var(--hover); color: var(--ink); }
+.chip[aria-pressed="true"] {
+  background: var(--ink); color: #FFF; box-shadow: none; font-weight: 500;
+}
+.chip.limpiar { color: var(--acento); box-shadow: none; }
+.chip.limpiar:hover { background: var(--acento-suave); }
+.filtros select {
+  height: 28px; padding: 0 8px; border: 0; border-radius: 6px;
+  background: var(--superficie); box-shadow: var(--borde);
+  font: inherit; font-size: 13px; color: var(--ink); cursor: pointer;
+}
+.separador { width: 1px; height: 20px; background: rgba(0, 0, 0, .1); margin: 0 4px; }
+
+/* ── contenido: el tablero es una rejilla, no un documento ──────────────── */
+
+main {
+  max-width: var(--ancho); margin: 0 auto; padding: 16px 20px 40px;
+  transition: opacity .12s;
+}
+main[data-cargando="si"] { opacity: .6; }
+
+.tablero { display: flex; flex-direction: column; gap: var(--aire); }
+.rejilla { display: grid; gap: var(--aire); align-items: stretch; }
+.rejilla.franja { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+/* 2:1 — el gráfico ancho manda y el detalle lo acompaña, como en la fila de
+   arriba de cualquier tablero que se lea de un vistazo */
+.rejilla.c23 { grid-template-columns: 2fr minmax(0, 1fr); }
+.rejilla.c32 { grid-template-columns: minmax(0, 1fr) 2fr; }
+.rejilla.c23-inv { grid-template-columns: minmax(0, 1fr) 2fr; }
+.rejilla.c3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+/* ── tarjeta ────────────────────────────────────────────────────────────── */
+
+.tarjeta {
+  background: var(--superficie); border-radius: 10px;
+  box-shadow: var(--elev-1); padding: 14px 16px;
+  display: flex; flex-direction: column; min-width: 0;
+}
+.tarjeta[data-alto="si"] { height: 100%; }
+.tarjeta > header {
+  display: flex; align-items: flex-start; gap: 16px;
+  margin-bottom: 12px;
+}
+.tarjeta > header .rotulos { min-width: 0; }
+.tarjeta > header h2 {
+  font-size: 13px; font-weight: 600; letter-spacing: -.1px; line-height: 18px;
+}
+.tarjeta > header p {
+  font-size: 11.5px; line-height: 16px; color: var(--ink-3); margin-top: 2px;
+}
+.tarjeta > header .aparte { margin-left: auto; flex: none; text-align: right; }
+.accion-tarjeta {
+  appearance: none; border: 0; background: transparent; color: var(--acento);
+  font: inherit; font-size: 11.5px; font-weight: 500; cursor: pointer;
+  white-space: nowrap; margin-left: auto; padding: 2px 0;
+}
+.tarjeta > header .aparte + .accion-tarjeta { margin-left: 0; }
+.accion-tarjeta:hover { text-decoration: underline; }
+.accion-tarjeta:focus-visible { outline: 2px solid var(--acento); outline-offset: 3px; border-radius: 2px; }
+.tarjeta > .cuerpo { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+.resalte { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
+.resalte .rotulo { font-size: 11px; color: var(--ink-3); white-space: nowrap; }
+.resalte .linea { display: flex; align-items: center; gap: 6px; }
+.resalte .linea b { font-size: 17px; font-weight: 600; letter-spacing: -.5px; }
+
+.resumen-comparacion { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.comparacion-periodos {
+  display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 3px 10px;
+  font-size: 10.5px; line-height: 14px; color: var(--ink-3);
+}
+.comparacion-periodos span[data-sube="si"] { color: #128260; }
+.comparacion-periodos span[data-sube="no"] { color: #C62A2F; }
+
+/* ── franja de indicadores ──────────────────────────────────────────────── */
+
+.kpi {
+  background: var(--superficie); border-radius: 10px; box-shadow: var(--elev-1);
+  padding: 12px 14px; min-width: 0;
+}
+.kpi-enlace {
+  appearance: none; border: 0; width: 100%; color: inherit; font: inherit;
+  text-align: left; cursor: pointer;
+}
+.kpi-enlace:hover { box-shadow: var(--elev-2); }
+.kpi-enlace:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+.kpi .alto { display: flex; align-items: center; gap: 8px; }
+.kpi .rotulo {
+  font-size: 11.5px; color: var(--ink-2); font-weight: 500;
+  display: flex; align-items: center; gap: 5px; min-width: 0;
+}
+.kpi .valor {
+  font-size: 25px; font-weight: 600; letter-spacing: -1px; line-height: 32px; margin-top: 4px;
+}
+/* Titular de texto: el nombre del salto o de la etapa entra en una línea a 18px
+   («Calificado → Test Drive Agendado», 31 caracteres, ~275px en una tarjeta de
+   ~372px útiles). A 25px se corta, y un nombre truncado no identifica nada. */
+.kpi .valor.texto {
+  font-size: 18px; letter-spacing: -.3px; line-height: 26px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.kpi .nota {
+  font-size: 11px; color: var(--ink-3); line-height: 15px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* Píldora de variación. Solo aparece cuando la variación existe de verdad
+   (hay dos meses comparables); un hueco es correcto y un
+   porcentaje inventado que se lee como tendencia, no. */
+.pildora {
+  margin-left: auto; flex: none;
+  font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums;
+  padding: 2px 6px; border-radius: 999px;
+  background: rgba(27, 175, 122, .12); color: #128260;
+}
+.pildora[data-sube="no"] { background: rgba(229, 72, 77, .1); color: #C62A2F; }
+.pildora small { font: inherit; font-weight: 400; opacity: .78; }
+.nota-franja { font-size: 11px; color: var(--ink-3); line-height: 15px; margin-top: -4px; }
+.nota-franja b { font-weight: 500; color: var(--ink-2); }
+
+/* ── recorrido del lead ─────────────────────────────────────────────────── */
+
+.recorrido { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 1px; }
+.recorrido li {
+  display: grid; grid-template-columns: minmax(84px, auto) minmax(40px, 1fr) auto 40px;
+  align-items: center; gap: 10px;
+  padding: 4px 0; font-size: 12px; cursor: default;
+}
+.recorrido li:hover { background: var(--fondo); border-radius: 4px; }
+.recorrido .rotulo {
+  color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.recorrido .pista { height: 8px; border-radius: 4px; background: var(--hundido); overflow: hidden; }
+.recorrido .pista i { display: block; height: 100%; border-radius: 4px; background: var(--serie-1); }
+.recorrido .valor { font-weight: 500; font-variant-numeric: tabular-nums; }
+.recorrido .caida {
+  text-align: right; font-size: 11px; color: var(--malo); font-variant-numeric: tabular-nums;
+}
+/* el paso final es el resultado, no un paso más */
+.recorrido li[data-venta="si"] .valor { color: var(--bueno); }
+.recorrido li[data-venta="si"] .pista i { background: var(--bueno); }
+
+/* ── el recorrido en detalle: barra de llegados + pérdida escrita ────── */
+.saltos { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.saltos li {
+  display: grid;
+  grid-template-columns: minmax(88px, 132px) minmax(56px, 1fr) 52px 96px;
+  align-items: center; gap: 10px;
+  padding: 5px 0; font-size: 12px; cursor: default;
+}
+.saltos li:hover { background: var(--fondo); border-radius: 4px; }
+.saltos .cabeza {
+  font-size: 11px; color: var(--ink-3); padding: 0 0 4px; cursor: default;
+  box-shadow: inset 0 -1px 0 var(--reja);
+}
+.saltos .cabeza:hover { background: none; }
+.saltos .cabeza .valor, .saltos .cabeza .baja,
+.saltos .cabeza .rotulo { font-weight: 400; color: var(--ink-3); }
+/* la columna de la barra no lleva encabezado: la pista heredada pintaba una
+   barra gris vacía sobre los rótulos */
+.saltos .cabeza .pista { background: none; height: auto; }
+.saltos .rotulo {
+  color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.saltos .pista { height: 12px; border-radius: 4px; background: var(--hundido); overflow: hidden; }
+.saltos .pista i { display: block; height: 100%; border-radius: 4px; }
+.saltos .paso { background: var(--serie-1); }
+.saltos .valor { font-weight: 500; text-align: right; }
+/* El absoluto y el porcentaje del mismo salto van en UNA celda: son la misma
+   cifra contada de dos maneras, y en dos columnas se leían como dos datos. */
+.saltos .baja { text-align: right; color: var(--ink-2); }
+.saltos .baja small { font-size: 11px; color: var(--ink-3); margin-left: 2px; }
+
+/* el paso final es el resultado, no un paso más */
+.saltos li[data-venta="si"] .paso { background: var(--bueno); }
+.saltos li[data-venta="si"] .valor { color: var(--bueno); }
+
+/* UN solo salto marcado, el más caro. La barra sigue representando llegados;
+   el rojo se reserva para la cifra de la pérdida. */
+.saltos li[data-peor="si"] .baja { color: var(--malo); font-weight: 500; }
+.saltos li[data-peor="si"] .baja small { color: var(--malo); }
+
+/* ── días por etapa ─────────────────────────────────────────────────────────
+   Barras neutras porque acá no hay categorías que distinguir, solo largos que
+   comparar; el color se gasta en una sola cosa, la etapa donde el lead se queda
+   más quieto. */
+.dias { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.dias li {
+  display: grid; grid-template-columns: minmax(84px, 1fr) minmax(40px, 1fr) 46px;
+  align-items: center; gap: 10px;
+  padding: 5px 0; font-size: 12px; cursor: default;
+}
+.dias li:hover { background: var(--fondo); border-radius: 4px; }
+.dias .rotulo {
+  color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.dias .pista { height: 12px; border-radius: 4px; background: var(--hundido); overflow: hidden; }
+.dias .pista i { display: block; height: 100%; border-radius: 4px; background: var(--volumen); }
+.dias .valor { font-weight: 500; text-align: right; font-variant-numeric: tabular-nums; }
+.dias li[data-lenta="si"] .pista i { background: var(--alerta); }
+.dias li[data-lenta="si"] .valor { color: var(--ink); }
+
+/* ── hallazgos ──────────────────────────────────────────────────────────── */
+
+/* Apilados van dentro de una tarjeta y se leen como lista de pendientes: sin
+   sombra propia, separados por una línea. */
+.hallazgos.apilados { display: flex; flex-direction: column; }
+.hallazgos.apilados .hallazgo {
+  box-shadow: none; border-radius: 0; padding: 12px 0; gap: 5px;
+}
+.hallazgos.apilados .hallazgo + .hallazgo { box-shadow: inset 0 1px 0 0 var(--reja); }
+.hallazgos.apilados .hallazgo:first-child { padding-top: 0; }
+.hallazgos.apilados .hallazgo .accion { box-shadow: none; padding-top: 0; margin-top: 2px; }
+/* la cifra va PEGADA a su cinta, no contra el borde: en una tarjeta ancha,
+   empujarla al extremo la deja huérfana de lo que nombra */
+.hallazgos.apilados .hallazgo .cifra { margin-left: 0; font-size: 18px; line-height: 22px; }
+.hallazgos.apilados .hallazgo .alto { gap: 8px; }
+
+.hallazgo {
+  background: var(--superficie); border-radius: 10px; box-shadow: var(--elev-1);
+  padding: 14px 16px; display: flex; flex-direction: column; gap: 7px;
+}
+.hallazgo .alto { display: flex; align-items: baseline; gap: 10px; }
+.hallazgo .cinta {
+  font-size: 10.5px; letter-spacing: .5px; text-transform: uppercase;
+  color: var(--ink-3); font-weight: 500; display: flex; align-items: center; gap: 5px;
+}
+.hallazgo .cifra {
+  margin-left: auto; font-size: 21px; font-weight: 600; letter-spacing: -.7px; line-height: 26px;
+}
+.hallazgo h3 { font-size: 13px; font-weight: 600; letter-spacing: -.1px; line-height: 18px; }
+.hallazgo p { font-size: 12px; color: var(--ink-2); line-height: 17px; }
+.hallazgo .accion {
+  margin-top: auto; padding-top: 9px; font-size: 12px; line-height: 17px; color: var(--ink-2);
+  box-shadow: inset 0 1px 0 0 var(--reja);
+}
+.hallazgo .salto { font-size: 12px; font-weight: 500; color: var(--acento); text-decoration: none; }
+.hallazgo .salto:hover { text-decoration: underline; }
+
+/* ── riesgo operativo ───────────────────────────────────────────────────── */
+
+.riesgos { display: flex; flex-direction: column; }
+.riesgo {
+  display: grid; grid-template-columns: auto 1fr; gap: 0 12px; align-items: baseline;
+  padding: 9px 0 9px 11px; position: relative;
+}
+.riesgo + .riesgo { box-shadow: inset 0 1px 0 0 var(--reja); }
+.riesgo::before {
+  content: ""; position: absolute; left: 0; top: 11px; bottom: 11px;
+  width: 3px; border-radius: 2px; background: var(--ink-3);
+}
+.riesgo[data-nivel="malo"]::before { background: var(--malo); }
+.riesgo[data-nivel="alerta"]::before { background: var(--alerta); }
+.riesgo .valor {
+  grid-row: span 2; font-size: 21px; font-weight: 600;
+  letter-spacing: -.7px; line-height: 26px; min-width: 62px;
+}
+.riesgo .rotulo { font-size: 12.5px; font-weight: 500; }
+.riesgo .detalle { font-size: 11.5px; color: var(--ink-3); line-height: 16px; }
+
+/* ── mezcla de canales ──────────────────────────────────────────────────── */
+
+.mezcla { display: flex; flex-direction: column; height: 100%; }
+/* El anillo NO se estira a lo ancho de la tarjeta: su alto lo decide la
+   proporción del viewBox, así que a 952px pediría 470px de alto. Queda en su
+   tamaño natural y centrado. */
+.mezcla .donas { max-width: 470px; margin: 0 auto 6px; }
+/* Al apuntar un segmento el resto se apaga. Va acotado al SVG de los anillos y
+   no heredado de `figure:hover .marca`: la tabla de abajo vive en el mismo
+   bloque y con la regla del figure apuntar una fila apagaría los dos anillos. */
+.mezcla .donas:hover .marca { opacity: .45; }
+.mezcla .donas .marca:hover, .mezcla .donas .marca:focus { opacity: 1; outline: none; }
+/* El total en el hueco del anillo: es la cifra que la parte divide, así que
+   pesa como una cifra y no como un rótulo de eje. */
+svg text.dona-total { font-size: 19px; fill: var(--ink); font-weight: 600; }
+/* La parte, pegada al nombre del canal en la etiqueta de afuera. */
+svg tspan.dato { fill: var(--ink); font-weight: 500; }
+
+.mezcla .encabezados-canales {
+  display: grid; grid-template-columns: 12px 1fr 64px 64px 72px; gap: 8px;
+  margin-top: 2px; padding-bottom: 4px;
+  color: var(--ink-3); font-size: 10.5px;
+}
+.mezcla .encabezados-canales span:nth-child(n+3) { text-align: right; }
+.mezcla .detalle-canales { list-style: none; padding: 0; }
+.mezcla .detalle-canales li {
+  display: grid; grid-template-columns: 12px 1fr 64px 64px 72px; gap: 8px; align-items: center;
+  padding: 6px 0; font-size: 12px;
+  box-shadow: inset 0 1px 0 0 var(--reja);
+}
+.mezcla .detalle-canales .cuota { color: var(--ink-2); text-align: right; }
+.mezcla .detalle-canales .cuota[data-balance="positivo"] { color: var(--bueno); font-weight: 500; }
+.mezcla .detalle-canales .cuota[data-balance="negativo"] { color: var(--malo); font-weight: 500; }
+.mezcla .detalle-canales .conv {
+  text-align: right; font-variant-numeric: tabular-nums;
+}
+.mezcla .pie-nota {
+  margin-top: auto; padding-top: 10px; font-size: 11.5px; color: var(--ink-3); line-height: 16px;
+}
+
+/* ── comparación ejecutiva de canales ────────────────────────────────────── */
+
+.comparacion-canales { display: flex; flex-direction: column; }
+.comparacion-canales .lectura-canal {
+  background: var(--acento-suave); border-radius: 8px;
+  padding: 9px 12px; margin-bottom: 12px;
+  color: var(--ink-2); font-size: 12.5px; line-height: 18px;
+}
+.comparacion-canales .lectura-canal strong { color: var(--ink); font-weight: 600; }
+/* Los mínimos de esta rejilla sumaban 528px y la tarjeta pasó a la columna de
+   1fr, que da ~440: con los anteriores la fila desbordaba la tarjeta. Los tres
+   tramos siguen en proporción, pero ninguno bloquea el encogido. */
+.comparacion-canales .cabecera-comparacion,
+.comparacion-canales li {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(110px, 1.2fr) 58px;
+  align-items: center; gap: 12px;
+}
+.comparacion-canales .cabecera-comparacion {
+  color: var(--ink-3); font-size: 10.5px; padding: 0 10px 5px;
+}
+.comparacion-canales .cabecera-comparacion span:nth-child(n+2) { text-align: right; }
+.comparacion-canales ol { list-style: none; padding: 0; margin: 0; }
+.comparacion-canales li {
+  min-height: 49px; padding: 7px 10px;
+  box-shadow: inset 0 1px 0 0 var(--reja);
+}
+.comparacion-canales li[data-lider="si"] { background: rgba(27, 175, 122, .06); border-radius: 7px; }
+.comparacion-canales .identidad-canal { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.comparacion-canales .identidad-canal .puesto { color: var(--ink-3); width: 12px; font-size: 11px; }
+.comparacion-canales .identidad-canal .nombre-canal { min-width: 0; }
+.comparacion-canales .identidad-canal b {
+  display: block; font-size: 12.5px; font-weight: 500;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.comparacion-canales .identidad-canal small { display: block; color: var(--ink-3); font-size: 10.5px; }
+.comparacion-canales .ventas-canal {
+  display: grid; grid-template-columns: minmax(40px, 1fr) 44px;
+  align-items: center; gap: 8px;
+}
+.comparacion-canales .ventas-canal .pista {
+  height: 9px; border-radius: 5px; background: var(--hundido); overflow: hidden;
+}
+.comparacion-canales .ventas-canal .pista i { display: block; height: 100%; border-radius: 5px; }
+.comparacion-canales .ventas-canal b,
+.comparacion-canales .conversion-canal { text-align: right; font-size: 12.5px; font-weight: 500; }
+
+
+/* ── orígenes: las fuentes concretas, ordenadas por lo que cierran ──────── */
+
+.origenes { display: flex; flex-direction: column; height: 100%; }
+.origenes ul { list-style: none; padding: 0; }
+/* La columna que se estira es la BARRA y no el nombre: en la tarjeta de ancho
+   completo el nombre dejaba 900px de aire al medio y la conversión —lo que
+   ordena la lista— quedaba dibujada en 54px. El nombre se lleva lo que necesita
+   y ya tiene su recorte con puntos suspensivos. */
+.origenes .origen {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 220px) minmax(54px, 1fr) 44px 52px;
+  gap: 10px; align-items: center; font-size: 12px; padding: 4px 0 7px;
+  cursor: default; border-radius: 4px;
+  box-shadow: inset 0 1px 0 0 var(--reja);
+}
+.origenes .origen:first-child { box-shadow: none; }
+.origenes .origen:hover { background: var(--fondo); }
+.origenes .marca-serie { margin-right: 0; width: 10px; height: 10px; }
+.origenes .nombre {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 11.5px; color: var(--ink-2);
+}
+.origenes .pista { height: 8px; border-radius: 4px; background: var(--hundido); overflow: hidden; }
+.origenes .pista i { display: block; height: 100%; border-radius: 4px; }
+.origenes .conv { text-align: right; font-weight: 500; }
+/* el volumen es la restricción, no la medición: barra tenue DETRÁS del número,
+   nunca un segundo color que compita con la conversión que ordena la lista */
+.origenes .leads { position: relative; text-align: right; color: var(--ink-3); }
+/* subrayado y no bloque: un rectángulo detrás del número se leía como una fila
+   resaltada, que es lo que hace el hover — dos significados para la misma forma */
+.origenes .leads i {
+  position: absolute; right: 0; bottom: -3px;
+  height: 3px; border-radius: 2px; background: var(--volumen);
+}
+.origenes .leads b { position: relative; font-weight: 400; }
+.origenes .pie-nota {
+  margin-top: auto; padding-top: 10px; font-size: 11.5px; color: var(--ink-3); line-height: 16px;
+}
+
+/* ── tablas ─────────────────────────────────────────────────────────────── */
+
+.envoltura { overflow-x: auto; }
+table.datos { width: 100%; font-size: 12px; }
+table.datos th {
+  text-align: right; font-weight: 500; color: var(--ink-3); font-size: 11px;
+  padding: 0 10px 6px; white-space: nowrap;
+}
+table.datos th:first-child, table.datos td:first-child { text-align: left; padding-left: 0; }
+table.datos th:last-child, table.datos td:last-child { padding-right: 0; }
+table.datos td {
+  text-align: right; padding: 7px 10px; white-space: nowrap;
+  box-shadow: inset 0 1px 0 0 var(--reja);
+}
+table.datos tbody tr:hover td { background: var(--fondo); }
+/* La destacada pesa por tamaño y no solo por grosor: entre 400 y 500 a 12px la
+   diferencia no se ve a un metro de la pantalla, y era la única marca que
+   separaba las dos columnas que contestan la pregunta del segmento de las siete
+   de contexto. */
+table.datos td.destacado { font-weight: 500; font-size: 13px; color: var(--ink); }
+table.datos th.destacado { color: var(--ink-2); }
+table.datos .apagado { color: var(--ink-3); }
+/* El nombre identifica la fila: si pesa lo mismo que las cifras, recorrer la
+   tabla obliga a volver a la izquierda a buscar de quién era el renglón. */
+table.datos tbody td:first-child { font-weight: 500; color: var(--ink); }
+
+/* Encabezado ordenable. El botón es UN solo elemento enfocable y lleva también
+   los handlers del globo, así que apuntarlo sigue explicando qué mide la
+   columna; el punteado va en el texto de adentro porque aplicado al botón
+   subrayaría también la flecha. */
+.orden-col {
+  appearance: none; border: 0; background: none; padding: 0; margin: 0;
+  font: inherit; color: inherit; cursor: pointer;
+  display: inline-flex; align-items: baseline; gap: 3px;
+}
+/* La flecha ocupa su lugar desde el principio, transparente: apareciendo con el
+   clic movería el ancho de la columna y el ojo perdería la fila que seguía. */
+.orden-col .flecha { font-size: 9px; opacity: 0; transition: opacity .12s; }
+.orden-col:hover .flecha, .orden-col:focus-visible .flecha { opacity: .45; }
+.orden-col:hover .definible { text-decoration-color: var(--acento); }
+/* La columna por la que está ordenada: es el estado de la tabla, así que se
+   marca en el encabezado y no en las celdas — teñir nueve filas por una columna
+   activa pesa más que la cifra que se está comparando. */
+table.datos th[aria-sort] { color: var(--ink); }
+table.datos th[aria-sort] .flecha { opacity: 1; }
+
+/* Encabezado de grupo: convierte nueve columnas en tres preguntas. La línea
+   vertical abre el bloque y baja por las filas, así que el ojo entra por el
+   grupo y recién adentro compara columnas. */
+table.datos thead tr.grupos th {
+  font-size: 10px; font-weight: 500; letter-spacing: .7px; text-transform: uppercase;
+  color: var(--ink-3); text-align: left; padding: 0 10px 7px;
+}
+table.datos thead tr.grupos th:not(.grupo-inicio) { padding: 0; }
+table.datos th.grupo-inicio { box-shadow: inset 1px 0 0 0 var(--reja); }
+table.datos td.grupo-inicio { box-shadow: inset 0 1px 0 0 var(--reja), inset 1px 0 0 0 var(--reja); }
+table.datos tfoot td.grupo-inicio {
+  box-shadow: inset 0 1px 0 0 rgba(0, 0, 0, .16), inset 1px 0 0 0 var(--reja);
+}
+
+/* El hilo bajo la cifra: el orden de la columna, visible sin leer ocho números.
+   La pista tiene ancho FIJO y está anclada al borde derecho de la celda, así que
+   los ocho hilos arrancan del mismo lugar; escalados al ancho del texto, «11,9% ·
+   239» y «19,0% · 1.106» daban pistas distintas y los largos dejaban de
+   compararse. */
+table.datos td.con-hilo { position: relative; padding-bottom: 12px; }
+table.datos td.con-hilo::after {
+  content: ""; position: absolute; right: 10px; bottom: 6px;
+  width: 56px; height: 3px; border-radius: 2px; background: var(--reja);
+}
+table.datos td:last-child.con-hilo::after { right: 0; }
+/* El `right` lo pone el componente: es el que sabe cuánto mide el hilo, y de ahí
+   sale el desplazamiento que lo hace arrancar en el borde izquierdo de la pista
+   en vez de crecer hacia atrás desde el derecho. */
+table.datos .hilo {
+  position: absolute; bottom: 6px; height: 3px; border-radius: 2px;
+  background: var(--serie-1); z-index: 1;
+}
+/* El pie es la vara del conjunto, no otra fila: línea de cierre más marcada que
+   la de una fila cualquiera, y sin hover — no hay nada que apuntar en él. */
+table.datos tfoot td {
+  padding-top: 9px; font-weight: 500; color: var(--ink-2);
+  box-shadow: inset 0 1px 0 0 rgba(0, 0, 0, .16);
+}
+
+/* Tabla con jerarquía: un canal y sus fuentes. La línea del grupo es más marcada
+   que la de una fila cualquiera —es donde empieza un bloque— y los hijos van
+   sangrados y apagados. Dos tablas anidadas desalinearían las columnas, que es
+   exactamente lo que se compara entre un canal y otro. */
+
+/* el diccionario es texto, no cifras: se alinea a la izquierda y respira */
+table.datos.diccionario th, table.datos.diccionario td { text-align: left; white-space: normal; }
+table.datos.diccionario .definicion { color: var(--ink-2); line-height: 18px; min-width: 320px; }
+
+.marca-serie {
+  display: inline-block; width: 10px; height: 10px; border-radius: 3px;
+  margin-right: 8px; vertical-align: -1px;
+}
+
+/* ── gráficos ───────────────────────────────────────────────────────────── */
+
+figure { display: flex; flex-direction: column; gap: 10px; height: 100%; }
+figcaption, .pie {
+  font-size: 11px; color: var(--ink-3); line-height: 15px; margin-top: auto; padding-top: 2px;
+}
+.pie b { font-weight: 500; color: var(--ink-2); }
+/* Mismo comportamiento que `figure` sin ser uno: `figure:hover .marca` apaga
+   todas las marcas menos la apuntada, y con FILAS en vez de segmentos eso apaga
+   la lista completa cada vez que el puntero pasa por el pie. */
+.bloque { display: flex; flex-direction: column; gap: 10px; height: 100%; }
+/* El pie va PEGADO al gráfico y no al fondo de la tarjeta. En una fila donde la
+   tarjeta de al lado es más alta, empujarlo abajo abría un hueco de 120px justo
+   en el medio; con el pie arriba, ese aire queda al borde y se lee como padding. */
+figure.apretada figcaption { margin-top: 6px; }
+figure.apretada { flex: none; }
+/* height:auto pisa el atributo height del SVG: el alto lo decide la proporción
+   del viewBox, no un número fijo que pelea con preserveAspectRatio y deja una
+   banda muerta. El escalado "meet" toma el MENOR de los dos factores, así que
+   con un alto fijo siempre sobra espacio en un eje: abajo cuando el viewBox es
+   más ancho que la tarjeta, a la derecha cuando es más angosto. El viewBox de
+   cada gráfico está calibrado para que, en el ancho de la tarjeta donde vive,
+   la proporción dé 210-240px. */
+svg { display: block; overflow: visible; max-width: 100%; height: auto; }
+svg text { font-size: 11px; fill: var(--ink-3); }
+svg text.valor { font-size: 12px; fill: var(--ink); font-weight: 500; }
+svg text.etiq { font-size: 12px; fill: var(--ink-2); }
+/* Cifra escrita ADENTRO de un bloque de serie: solo va sobre los pasos
+   oscuros de la rampa, que son los únicos que dan 4,5:1 contra el blanco. */
+svg text.dentro { font-size: 12px; fill: #fff; font-weight: 500; }
+svg .reja { stroke: var(--reja); stroke-width: 1; }
+/* Cifra de contexto en una columna al margen: el mismo tamaño que la cifra que
+   manda, apagada, para que se compare sin competir. */
+svg text.apagada { fill: var(--ink-3); font-weight: 400; }
+
+/* Al apuntar una marca, el resto se apaga: es lo que hace legible el contraste
+   entre esa barra y las demás sin sacarlas de la vista. */
+.marca { transition: opacity .12s; }
+figure:hover .marca { opacity: .45; }
+figure .marca:hover { opacity: 1; }
+
+.leyenda { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12px; color: var(--ink-2); }
+.leyenda span { display: flex; align-items: center; gap: 6px; }
+/* Cómo leer las etiquetas del gráfico, no una serie: va al final y apagada
+   para no competir con las marcas de color. */
+.leyenda .leyenda-nota { color: var(--ink-3); }
+
+.selector-series { display: flex; flex-wrap: wrap; gap: 6px; }
+.selector-series button {
+  appearance: none; border: 0; border-radius: 6px; background: var(--superficie);
+  box-shadow: var(--borde); color: var(--ink-2); cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 9px; font: inherit; font-size: 12px;
+}
+.selector-series button:hover { background: var(--hover); color: var(--ink); }
+.selector-series button[aria-pressed="true"] {
+  background: var(--acento-suave); box-shadow: 0 0 0 1px rgba(0, 114, 245, .3);
+  color: var(--ink); font-weight: 500;
+}
+.selector-series .marca-serie { margin: 0; }
+
+.globo {
+  position: fixed; top: 0; left: 0; z-index: 60; pointer-events: none;
+  background: var(--superficie); border-radius: 8px; padding: 8px 10px;
+  box-shadow: var(--elev-2); font-size: 12px; line-height: 17px;
+  max-width: 280px; opacity: 0; transition: opacity .1s;
+}
+.globo[data-visible="si"] { opacity: 1; }
+.globo strong { font-weight: 500; }
+.globo .texto { margin: 4px 0 2px; color: var(--ink-2); }
+.globo .fila { display: flex; justify-content: space-between; gap: 16px; color: var(--ink-2); }
+.globo .fila b { font-weight: 500; color: var(--ink); }
+.globo .nota { margin-top: 4px; color: var(--alerta); }
+
+.aviso-annexo {
+  font-size: 12.5px; line-height: 18px; color: var(--ink-2);
+  background: var(--hundido); border-radius: 8px; padding: 10px 12px; max-width: 80ch;
+}
+
+/* ── metodología ────────────────────────────────────────────────────────── */
+
+details.metodo {
+  background: var(--superficie); border-radius: 10px; box-shadow: var(--elev-1);
+  padding: 14px 16px;
+}
+details.metodo > summary {
+  cursor: pointer; font-weight: 600; font-size: 13px; list-style: none;
+  display: flex; align-items: center; gap: 8px;
+}
+details.metodo > summary::-webkit-details-marker { display: none; }
+details.metodo > summary::before { content: "＋"; color: var(--ink-3); }
+details.metodo[open] > summary::before { content: "－"; }
+details.metodo .cuerpo {
+  margin-top: 14px; display: flex; flex-direction: column; gap: 14px;
+  font-size: 12.5px; line-height: 19px; color: var(--ink-2); max-width: 78ch;
+}
+details.metodo h4 { font-size: 13px; font-weight: 500; color: var(--ink); }
+details.metodo code {
+  font-family: "Geist Mono", ui-monospace, monospace; font-size: 12px;
+  background: var(--hundido); padding: 1px 5px; border-radius: 4px; color: var(--ink);
+}
+details.metodo ul { margin: 6px 0 0; padding-left: 18px; }
+details.metodo li { margin-bottom: 4px; }
+
+/* ── angosto ────────────────────────────────────────────────────────────── */
+
+@media (max-width: 1400px) {
+  .rejilla.franja { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* La fila 2:1 se apila antes que el resto: la columna angosta es un tercio del
+   ANCHO ÚTIL, y el menú lateral se come 236px que este `max-width` no ve. A
+   1.280px de ventana esa columna queda en 308px y los nombres de canal del
+   ranking empiezan a salir cortados; a 1.320 mide 357 y entran completos. */
+@media (max-width: 1320px) {
+  .rejilla.c23, .rejilla.c32, .rejilla.c23-inv { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 1180px) {
+  .rejilla.c3 { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 1000px) {
+  /* el menú pasa a ser una cinta arriba: en angosto una columna fija se come el
+     ancho que necesitan las tablas */
+  .capa { grid-template-columns: 1fr; }
+  .lateral {
+    position: static; height: auto; flex-direction: row; align-items: center;
+    gap: 6px; overflow-x: auto; padding: 10px 16px;
+    box-shadow: 0 1px 0 0 rgba(0, 0, 0, .08);
+  }
+  .lateral .marca { padding: 0 10px 0 0; }
+  .lateral .menu { flex-direction: row; }
+  .lateral .menu a { white-space: nowrap; }
+  .lateral .menu a[aria-current="page"]::before { display: none; }
+  .tope { position: static; }
+  .cabecera .titulo { flex-wrap: wrap; }
+  .contexto-fecha { display: none; }
+}
+
+@media (max-width: 620px) {
+  .cabecera .titulo p { white-space: normal; }
+  .rejilla.franja { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .filtros .fila { flex-wrap: nowrap; overflow-x: auto; }
+  .filtros .fila > * { flex: none; }
+  .tarjeta > .cuerpo figure { overflow-x: auto; padding-bottom: 4px; }
+  .tarjeta > .cuerpo figure > svg { min-width: 620px; }
+  .comparacion-canales .cabecera-comparacion,
+  .comparacion-canales li {
+    grid-template-columns: minmax(120px, 1fr) minmax(110px, 1fr) 72px; gap: 8px;
+  }
+  .comparacion-canales .ventas-canal { grid-template-columns: minmax(50px, 1fr) 48px; gap: 6px; }
+}
+
+@media (max-width: 420px) {
+  .rejilla.franja { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
