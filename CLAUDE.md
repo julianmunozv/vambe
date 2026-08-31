@@ -50,7 +50,44 @@ cd frontend && npm run build      # → frontend/dist
 # LA verificación que importa: SQL vs TypeScript, número por número.
 # Necesita el API arriba — compara contra sus respuestas reales.
 cd frontend && npm run verify
+
+# Verify contra producción: el mismo chequeo, sobre el API desplegado.
+cd frontend && npm run verify -- https://panel-production-5514.up.railway.app
 ```
+
+## Despliegue
+
+Railway, proyecto `vambe`: un servicio `panel` (la imagen del `Dockerfile`, que
+compila el front y lo sirve desde el mismo FastAPI) más el Postgres. La infra se
+declara en `.railway/railway.ts` — `railway.json` quedó deprecado por Railway y
+se migró. El `package.json` de la raíz existe SOLO para que el CLI pueda evaluar
+ese archivo; el panel sigue teniendo el suyo en `frontend/`.
+
+```bash
+railway config plan        # qué cambiaría en la infra
+railway config apply       # aplicarlo
+railway up --service panel # construir y desplegar
+```
+
+**El ETL no corre en Railway.** Necesita el `.db` de 180 MB y dejaría 304 MB en
+`raw` que el API nunca lee: el API solo consulta `analytics.*` y
+`control.datasets`, 63 MB. El pipeline se corre local y a producción va el
+resultado. Postgres NO tiene proxy público —solo red privada—, así que la carga
+entra por SSH al propio contenedor en vez de exponer la base a internet:
+
+```bash
+pg_dump "$DATABASE_URL" -n analytics -n control --no-owner --no-privileges -Fc -f vambe.dump
+railway ssh config --service Postgres --alias vambe-pg -i ~/.ssh/id_ed25519
+ssh vambe-pg 'psql "$DATABASE_URL" -c "DROP SCHEMA IF EXISTS analytics CASCADE; DROP SCHEMA IF EXISTS control CASCADE;"'
+ssh vambe-pg 'pg_restore -d "$DATABASE_URL" --no-owner --no-privileges' < vambe.dump
+```
+
+Hay que dropear los esquemas antes: el API crea `control.*` al arrancar
+(`schema.sql`) y sin eso el restore choca contra las tablas que él ya creó.
+
+El healthcheck apunta a `/api/datasets`, no a `/`. La raíz la sirve
+`StaticFiles` y respondería 200 con Postgres caído: el deploy quedaría verde
+publicando un panel que no puede cargar un solo número.
 
 ## Invariantes — romper cualquiera invalida los números
 
@@ -91,6 +128,17 @@ deja el desempate al planificador y el mismo dato produce números distintos en
 cada reconstrucción. El desempate va por `orden_desde, orden_hasta` en las
 transiciones y por `id` en los mensajes. Al agregar un `ROW_NUMBER`, `LEAD` o
 `LAG`, agregar también el desempate.
+
+**La zona horaria se impone en la conexión, no se hereda del servidor.**
+Las marcas de tiempo son `timestamptz`, así que `date_trunc('month', ...)`
+resuelve el mes en la zona de la SESIÓN. La base de desarrollo estaba en
+`America/Santiago` y la de producción en `Etc/UTC`, y el mismo export dio
+números distintos: `npm run verify` marcó 6 casos con ±1 venta en `ventas_mes`
+—una venta cerrada 21:30 del 30 de septiembre en Santiago es de octubre en UTC—.
+La concesionaria es chilena y su septiembre es el de Santiago: la zona se
+declara en `config.yml → semantica.zona_horaria` y `db.conectar` la pasa como
+opción de arranque. No configurar la zona del servidor: eso arregla una máquina,
+no el cálculo.
 
 **Hay dos implementaciones de los mismos KPIs** — `backend/api/kpis/` y
 `frontend/src/kpis/` — y deben coincidir. La de SQL es la que sirve al panel; la

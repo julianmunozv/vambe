@@ -22,6 +22,15 @@ def cargar() -> dict:
     return yaml.safe_load(RUTA.read_text())
 
 
+def zona_horaria() -> str:
+    """La zona en la que se decide a qué mes pertenece una fecha.
+
+    Ver `semantica.zona_horaria` en config.yml: sin esto el mes depende del
+    servidor y el mismo dato produce números distintos en cada despliegue.
+    """
+    return str(cargar()["semantica"]["zona_horaria"])
+
+
 def ventana_dias() -> int:
     """Edad a la que se mide cada cohorte de leads. Ver `cohortes` en config.yml.
 

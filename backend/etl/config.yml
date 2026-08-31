@@ -53,6 +53,16 @@ semantica:
   remitente_humano: vendedor
   remitente_asistente: asistente
 
+  # EN QUÉ CALENDARIO CAE UN MES. Las marcas de tiempo son timestamptz, así que
+  # date_trunc('month', ...) resuelve el mes en la zona de la SESIÓN, no en la
+  # del dato. Sin fijarla, el mismo export da números distintos según dónde
+  # corra: la base de desarrollo estaba en America/Santiago y la de producción
+  # en Etc/UTC, y `npm run verify` marcó 6 casos con ventas de diferencia — una
+  # venta cerrada a las 21:30 de un 30 de septiembre en Santiago es de octubre
+  # en UTC. La concesionaria es chilena y su septiembre es el de Santiago, así
+  # que la zona se declara acá y `db.conectar` la impone en cada conexión.
+  zona_horaria: America/Santiago
+
 cohortes:
   # VENTANA DE OBSERVACIÓN · la edad a la que se mide cada mes de entrada.
   #
